@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  token: <your base64 encoded argocd token>
+kind: Secret
+metadata:
+  name: argocd-token
+type: Opaque

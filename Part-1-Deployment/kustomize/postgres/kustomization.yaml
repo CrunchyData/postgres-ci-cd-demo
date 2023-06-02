@@ -1,0 +1,4 @@
+resources:
+# - argocd-token.yaml
+- postgres-self-test-config.yaml
+- postgres.yaml
