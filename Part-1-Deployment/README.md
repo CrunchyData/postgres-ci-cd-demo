@@ -1,31 +1,60 @@
 # CI/CD with Crunchy Postgres for Kubernetes and Argo Part -1
 
-Continuous Integration / Continuous Delivery (CI/CD) is an automated approach in which incremental code changes are made, built, tested and delivered. Organizations want to get their software solutions to market as quickly as possible without sacrificing quality or stability.  The automation that CI/CD provides facilitates achieving those accelerated goals by removing roadblocks in the software development lifecycle.  Your software pipeline processes can be fully automated and expanded upon to meet the evolving needs of your software products and business model.
+Continuous Integration / Continuous Delivery (CI/CD) is an automated approach in
+which incremental code changes are made, built, tested and delivered.
+Organizations want to get their software solutions to market as quickly as
+possible without sacrificing quality or stability. While CI/CD is often
+associated with application code, it can also be beneficial for managing changes
+to PostgreSQL database clusters.
 
-GitOps plays an important part in enabling CI/CD. If you are unfamiliar with Gitops and haven't seen [my blog](https://www.crunchydata.com/blog/postgres-gitops-with-argo-and-kubernetes) you may want to look at that before you proceed here.  In this blog we will build upon what we learned in the GitOps blog.
+GitOps plays an important part in enabling CI/CD. If you are unfamiliar with
+GitOps, I recommend starting with
+[my previous post on Postgres GitOps with Argo and Kubernetes](https://www.crunchydata.com/blog/postgres-gitops-with-argo-and-kubernetes).
 
-Using Crunchy Postgres for Kubernetes, ArgoCD and the Crunchy Postgres Self Test container, we will deploy a postgres cluster to a developer namespace, run a series of tests on the deployed cluster and once the tests pass we will automatically deploy the same postgres cluster to a QA namespace.
+Today I have a working sample to walk through for implementing basic CI/CD using
+Crunchy Postgres for Kubernetes, ArgoCD, and the Crunchy Postgres Self Test
+container. In the following steps we will:
 
-## Requirements
- - The Crunchy Data Postgres Operator (PGO) v5.3 or later deployed in the kubernetes cluster.  
- - PGO must have the sidecar functionality enabled.  To enable the sidecar functionality you will need to add the following to the `Deployment.spec.template.spec.containers.env` section of the `manager.yaml` file located in the `postgres-operator-examples/kustomize/install/manager` directory.
+- We will deploy a Postgres cluster to a developer namespace
+- Run a series of tests on the deployed cluster
+- Once the tests pass we will automatically deploy the same postgres cluster to
+  a QA namespace.
+
+### Prerequisites
+
+- [The Crunchy Data Postgres Operator (PGO)](https://access.crunchydata.com/documentation/postgres-operator/latest/quickstart/)
+  v5.3 or later deployed in the Kubernetes cluster.
+- PGO must have the sidecar functionality enabled. To enable the sidecar
+  functionality you will need to add the following to the
+  `Deployment.spec.template.spec.containers.env` section of the `manager.yaml`
+  file located in the `postgres-operator-examples/kustomize/install/manager`
+  directory.
 
 ```yaml
 - name: PGO_FEATURE_GATES
   value: 'InstanceSidecars=true'
 ```
- - ArgoCD v 2.6 or later deployed in the kubernetes cluster.
- - A private container registry containing the images you want to deploy.  Most organizations will pull images, tag them and then upload them into their private registries.  For this blog I am using a private registry for all images except the Crunchy Postgres Self Test.  That image is in a public repo in my docker registry.
- - A git repository containing the Crunchy Postgres for Kubernetes manifest to be deployed.  Here's a sample manifest you can use or you can fork [my git repository](https://github.com/bobpach/Postgres-CI-CD).
+
+- [ArgoCD](https://argo-cd.readthedocs.io/en/release-2.0/getting_started/) v 2.6
+  or later deployed in the Kubernetes cluster.
+- A private container registry containing the images you want to deploy. Most
+  organizations will pull images, tag them and then upload them into their
+  private registries. For this blog I am using a private registry for all images
+  except the Crunchy Postgres Self Test. That image is in a public repo in my
+  docker registry.
+- A git repository containing the Crunchy Postgres for Kubernetes manifest to be
+  deployed. Here's a sample manifest you can use or you can fork
+  [my git repository](https://github.com/bobpach/Postgres-CI-CD).
 
 <details><summary>- kustomization.yaml</summary>
 
 ```yaml
 resources:
-# - argocd-token.yaml
-- hippo-self-test-config.yaml
-- postgres.yaml
+  # - argocd-token.yaml
+  - hippo-self-test-config.yaml
+  - postgres.yaml
 ```
+
 </details>
 
 <details><summary>- postgres.yaml</summary>
@@ -38,12 +67,12 @@ metadata:
 spec:
   image: bobpachcrunchy/crunchy-postgres:ubi8-15.1-5.3.0-1
   imagePullSecrets:
-  - name: privatereg
+    - name: privatereg
   postgresVersion: 15
   shutdown: false
   users:
     - name: hippo
-      options: "SUPERUSER"
+      options: 'SUPERUSER'
   instances:
     - name: pgha1
       replicas: 3
@@ -133,63 +162,73 @@ spec:
                   name: postgres-self-test-config
                   key: sslmode
           volumeMounts:
-          - name: postgres-data
-            readOnly: false
-            mountPath: /pgdata
+            - name: postgres-data
+              readOnly: false
+              mountPath: /pgdata
       dataVolumeClaimSpec:
         accessModes:
-        - "ReadWriteOnce"
+          - 'ReadWriteOnce'
         resources:
           requests:
             storage: 1Gi
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 1
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchLabels:
-                  postgres-operator.crunchydata.com/cluster: hippo
-                  postgres-operator.crunchydata.com/instance-set: pgha1         
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    postgres-operator.crunchydata.com/cluster: hippo
+                    postgres-operator.crunchydata.com/instance-set: pgha1
   backups:
     pgbackrest:
       image: bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
       repos:
-      - name: repo1
-        volume:
-          volumeClaimSpec:
-            accessModes:
-            - "ReadWriteOnce"
-            resources:
-              requests:
-                storage: 1Gi
+        - name: repo1
+          volume:
+            volumeClaimSpec:
+              accessModes:
+                - 'ReadWriteOnce'
+              resources:
+                requests:
+                  storage: 1Gi
 ```
+
 </details>
 </br>
 
-**Note:** For this blog the postgres cluster name is "hippo".  You should substitute this name and any other relevant values with your proper information.
+**Note:** For this blog the Postgres cluster name is "hippo". You should
+substitute this name and any other relevant values with your proper information.
 
 ## Self Test Container
-The Crunchy Postgres Self Test container will be deployed as a sidecar in each Postgres pod.  It runs read, write and delete tests in the cluster and confirms that replication is working as expected across all postgres pods.  If the tests pass it will synch an argocd application resulting in the promotion of the postgres cluster to another namespace.  The sidecar uses a configmap to manage self test behavior and ArgoCD application sync.  More information about the self test container and its configuration can be found [in github](https://github.com/bobpach/Crunchy-Postgres-Self-Test).
+
+I have created The Crunchy Postgres Self Test container. This will be deployed
+as a sidecar in each Postgres pod. It runs read, write and delete tests in the
+cluster and confirms that replication is working as expected across all postgres
+pods. If the tests pass it will synch an ArgoCD application resulting in the
+promotion of the Postgres cluster to another namespace. The sidecar uses a
+configmap to manage self test behavior and ArgoCD application sync. More
+information about the self test container and its configuration can be found
+[in github](https://github.com/bobpach/Crunchy-Postgres-Self-Test).
 
 <details><summary>- postgres-self-test-config.yaml</summary>
 
 ```yaml
 apiVersion: v1
-data:  
+data:
   argocd-namespace: argocd
   argocd-service-address: <ip address of the argocd service>
-  argocd-verify-tls: "false"
-  auto-promote: "true"
+  argocd-verify-tls: 'false'
+  auto-promote: 'true'
   auto-promote-argocd-app-name: postgres-qa
   db-user: hippo
   cluster-name: hippo
-  log-level: info 
+  log-level: info
   log-path: /pgdata
-  postgres-conn-attempts: "12"
-  postgres-conn-interval: "5"
-  service-port: "5432"
+  postgres-conn-attempts: '12'
+  postgres-conn-interval: '5'
+  service-port: '5432'
   sslmode: require
 kind: ConfigMap
 metadata:
@@ -198,51 +237,74 @@ metadata:
     postgres-operator.crunchydata.com/cluster: hippo
   name: postgres-self-test-config
 ```
+
 </details>
 
 ## ArgoCD
-You will need an ArgoCD token to connect to the server to synch the target application after the tests pass.  To get an ArgoCD token you will need to create a repository, project, role and policy. This can be done through the UI or CLI.  For this blog we will use the UI.  See ArgoCD documentation for CLI installation and commands.
 
-### Create an Argocd Repository
-To add your git repository to Argo CD click on ‘Settings’ in the
-navigation bar on the left.
+You will need an ArgoCD token to connect to the server to synch the target
+application after the tests pass. To get an ArgoCD token you will need to create
+a repository, project, role and policy. This can be done through the UI or CLI.
+For this blog we will use the UI. See ArgoCD documentation for CLI installation
+and commands.
 
-Click on ‘Repositories’ and the ‘Connect Repo’ buttons. Provide the
-necessary information and click ‘Save’. You should now have a connected repo. If
-not, please review your settings and try again.
+### Create an ArgoCD Repository
+
+To add your git repository to Argo CD click on ‘Settings’ in the navigation bar
+on the left.
+
+Click on ‘Repositories’ and the ‘Connect Repo’ buttons. Provide the necessary
+information and click ‘Save’. You should now have a connected repo. If not,
+please review your settings and try again.
 
 ### Create an ArgoCD Project
-Create an ArgoCD Project with the following properties:
+
+<details><summary><strong>Create an ArgoCD Project with the following properties:</strong>
+
 - Project Name: cicd-project
 - Description: A project used for the CI/CD pipeline.
-- Source Repositories: < the git repository you registered with argocd >
-- Destinations: 
+- Source Repositories: the git repository you registered with argocd >
+- Destinations:
   - Server: https://kubernetes.default.svc
   - Name: in-cluster
-  - Namespace: *
+  - Namespace:
 
-![ci-cd-project](https://github.com/bobpach/Postgres-CI-CD/blob/main/Part-1-Deployment/images/cicd-project.png)
-<!-- ![ci-cd-project](images/cicd-project.png) -->
+</summary>
 
-Click on the Roles tab and click the Add Role button.  Create a role and policy with the following properties:
+![ci-cd-project](https://imagedelivery.net/lPM0ntuwQfh8VQgJRu0mFg/9bb84f06-9618-4f3a-9113-a32e7f08fa00/public)
+
+</details>
+
+<details><summary><strong>Click on the Roles tab and click the Add Role button. Create a role and policy
+with the following properties:</strong>
+
 - Role Name: cicd-sync
 - Description: Project role used to synch apps from the CI/CD pipeline.
 - Action: sync
-- Application: cicd-project/*
+- Application: cicd-project/\*
 - Permission: allow
 
-Click the Create button.</br>
-![cicd-project-role](https://github.com/bobpach/Postgres-CI-CD/blob/main/Part-1-Deployment/images/cicd-project-role.png)
-<!-- ![cicd-project-role](images/cicd-project-role.png) -->
-Click on the role name you just created and then click the Create button in the JWT Tokens section of the sidebar.  Click OK when prompted.
-Copy and save the New Token in a safe place.</br>
-![cicd-project-role-details](https://github.com/bobpach/Postgres-CI-CD/blob/main/Part-1-Deployment/images/cicd-project-role-details.png)
-<!-- ![cicd-project-role-details](images/cicd-project-role-details.png) -->
-Click the Update button.</br>
-Base 64 encode the New Token.
-``` bash
+</summary>
+
+![cicd-project-role](https://imagedelivery.net/lPM0ntuwQfh8VQgJRu0mFg/908a535d-087e-43a1-9a69-58ad84dbe000/public)
+
+</details>
+
+<details><summary><strong>Click on the role name you just created and then click the Create button in the
+JWT Tokens section of the sidebar.</strong> Click OK when prompted. Copy and save the New
+Token in a safe place. </br>
+</summary>
+
+![cicd-project-role-details](https://imagedelivery.net/lPM0ntuwQfh8VQgJRu0mFg/ed39fa4c-92e4-4c39-0dd6-b742fa28ce00/public)
+
+</details>
+
+<strong>Base 64 encode the New Token.</strong>
+
+```bash
 echo < your new token > | base64
 ```
+
 Copy the base64 encoded new token and paste it into the argocd-token.yaml file
 
 <details><summary>- argocd-token.yaml</summary>
@@ -256,48 +318,60 @@ metadata:
   name: argocd-token
 type: Opaque
 ```
+
 </details>
 
-For security reasons, you may choose not to store your Argocd token in git.  If that is the case you can create the secret directly in your two namespaces.
+For security reasons, you may choose not to store your Argocd token in git. If
+that is the case you can create the secret directly in your two namespaces.
+
 ```bash
 kubectl apply -n postgres-dev -f argocd-token.yaml
 secret/argocd-token created
 kubectl apply -n postgres-qa -f argocd-token.yaml
 secret/argocd-token created
 ```
-Otherwise, you can uncomment the # - argocd-token.yaml line in the kustomization.yaml file and it will get created when the cluster gets created.
+
+Otherwise, you can uncomment the # - argocd-token.yaml line in the
+kustomization.yaml file and it will get created when the cluster gets created.
 
 ### Create the ArgoCD Applications
-We will create two Argocd applications.  Create the first one with the following properties:
+
+We will create two Argocd applications. Create the first one with the following
+properties:
+
 - General
-  - Application Name: postgres-dev
+  - Application Name: **postgres-dev**
   - Project Name: cicd-project
 - Source
   - Repository URL: < the git repository you registered with argocd >
   - Path: < the path to the kustomization file in the git repo >
 - Destination:
   - Cluster URL: https://kubernetes.default.svc
-  - Namespace: postgres-dev
+  - Namespace: **postgres-dev**
 
-Click the create button.
+Create the second application with the same properties as the first one with two
+exceptions:
 
-Create the second application with the same properties as the first one with two exceptions:
 - General
   - Application Name: **postgres-qa**
 - Destination:
   - Namespace: **postgres-qa**
 
-Click the create button.</br>
-![applications](https://github.com/bobpach/Postgres-CI-CD/blob/main/Part-1-Deployment/images/applications.png)
-<!-- ![applications](images/applications.png) -->
+![applications](https://imagedelivery.net/lPM0ntuwQfh8VQgJRu0mFg/1f111c4e-dce9-46f3-dcd2-8e29294c6000/public)
 
 ## Deploy the Crunchy Postgres for Kubernetes Cluster
-**Note:** Ensure that all yaml files have been checked into the git repo that you assigned to the cicd-project in ArgoCD.  These files should have all of your edits.  They will be used by ArgoCD to deploy into your postgres-dev and postgres-qa namespaces.
 
-Click the synch button in the postgres-dev Argocd application then click the synchronize button in the right side panel.
-The postgres cluster will get deployed into the postgres-dev namespace.
+**Note:** Ensure that all yaml files have been checked into the git repo that
+you assigned to the cicd-project in ArgoCD. These files should have all of your
+edits. They will be used by ArgoCD to deploy into your postgres-dev and
+postgres-qa namespaces.
 
-Lets look at the pods in our postgres-dev namespace:
+Click the synch button in the postgres-dev Argocd application then click the
+synchronize button in the right side panel. The postgres cluster will get
+deployed into the postgres-dev namespace.
+
+Let's look at the pods in our postgres-dev namespace:
+
 ```bash
 kubectl get pods -n postgres-dev
 NAME                      READY   STATUS      RESTARTS   AGE
@@ -307,7 +381,10 @@ hippo-pgha1-9kf7-0        5/5     Running     0          2m29s
 hippo-pgha1-mrhq-0        5/5     Running     0          2m29s
 hippo-repo-host-0         2/2     Running     0          2m29s
 ```
-Take a look at the self test container logs in the primary postgres pod in the postgres-dev namespace to see if our tests passed.
+
+Take a look at the self test container logs in the primary postgres pod in the
+postgres-dev namespace to see if our tests passed.
+
 ```bash
 kubectl logs $(kubectl get pod -l postgres-operator.crunchydata.com/role=master -o name -n postgres-dev) -n postgres-dev -c selftest
 2023-05-24 14:44:24,961 - self_test -           INFO - ******* STARTING NEW TEST RUN *******
@@ -332,7 +409,9 @@ kubectl logs $(kubectl get pod -l postgres-operator.crunchydata.com/role=master 
 2023-05-24 14:44:40,670 - self_test -           INFO - Dropping test_db
 2023-05-24 14:44:40,697 - self_test -           INFO - Dropping test_user
 ```
-Now lets look at the pods in our postgres-qa namespace:
+
+Now let's look at the pods in our postgres-qa namespace:
+
 ```bash
 kubectl get pods -n postgres-qa
 NAME                      READY   STATUS      RESTARTS   AGE
@@ -342,7 +421,15 @@ hippo-pgha1-jdxw-0        5/5     Running     0          81s
 hippo-pgha1-lp89-0        5/5     Running     0          81s
 hippo-repo-host-0         2/2     Running     0          81s
 ```
-Lastly, look at the two ArgoCD applications.  They are now both marked as Synched.
+
+Lastly, look at the two ArgoCD applications. They are now both marked as
+Synched.
 
 ## Summary
-We were able to deploy, test and promote a Crunchy Postgres for Kubernetes cluster using git and ArgoCD. The declarative nature of the manifest combined with the power of gitops and ArgoCD makes creating a CI/CD pipeline easier than ever.  This blog only covers a segment of a full end to end pipeline.  In my next blog we will look at how to apply new images to an existing application using ArgoCD Image Updater.  Stay tuned for part 2. 
+
+We were able to deploy, test and promote a Crunchy Postgres for Kubernetes
+cluster using git and ArgoCD. The declarative nature of the manifest combined
+with the power of GitOps and ArgoCD makes creating a CI/CD pipeline easier than
+ever. This blog only covers a segment of a full end to end pipeline. In my next
+blog we will look at how to apply new images to an existing application using
+ArgoCD Image Updater. Stay tuned for part 2.
