@@ -12,8 +12,8 @@ GitOps, I recommend starting with
 [my previous post on Postgres GitOps with Argo and Kubernetes](https://www.crunchydata.com/blog/postgres-gitops-with-argo-and-kubernetes).
 
 Today I have a working sample to walk through for implementing basic CI/CD using
-Crunchy Postgres for Kubernetes, ArgoCD, and the Crunchy Postgres Self Test
-container. In the following steps we will:
+Crunchy Postgres for Kubernetes, ArgoCD, and a self test container. In the
+following steps we will:
 
 - We will deploy a Postgres cluster to a developer namespace
 - Run a series of tests on the deployed cluster
@@ -22,9 +22,9 @@ container. In the following steps we will:
 
 ### Prerequisites
 
-- [The Crunchy Data Postgres Operator (PGO)](https://access.crunchydata.com/documentation/postgres-operator/latest/quickstart/)
-  v5.3 or later deployed in the Kubernetes cluster.
-- PGO must have the sidecar functionality enabled. To enable the sidecar
+- [Crunchy Postgres for Kubernetes](https://access.crunchydata.com/documentation/postgres-operator/latest/quickstart/)
+  v5.3 or later.
+- The sidecar functionality should be enabled. To enable the sidecar
   functionality you will need to add the following to the
   `Deployment.spec.template.spec.containers.env` section of the `manager.yaml`
   file located in the `postgres-operator-examples/kustomize/install/manager`
@@ -40,8 +40,7 @@ container. In the following steps we will:
 - A private container registry containing the images you want to deploy. Most
   organizations will pull images, tag them and then upload them into their
   private registries. For this blog I am using a private registry for all images
-  except the Crunchy Postgres Self Test. That image is in a public repo in my
-  docker registry.
+  except the self test. That image is in a public repo in my docker registry.
 - A git repository containing the Crunchy Postgres for Kubernetes manifest to be
   deployed. Here's a sample manifest you can use or you can fork
   [my git repository](https://github.com/bobpach/Postgres-CI-CD).
@@ -203,14 +202,15 @@ substitute this name and any other relevant values with your proper information.
 
 ## Self Test Container
 
-I have created The Crunchy Postgres Self Test container. This will be deployed
-as a sidecar in each Postgres pod. It runs read, write and delete tests in the
-cluster and confirms that replication is working as expected across all postgres
-pods. If the tests pass it will synch an ArgoCD application resulting in the
-promotion of the Postgres cluster to another namespace. The sidecar uses a
-configmap to manage self test behavior and ArgoCD application sync. More
-information about the self test container and its configuration can be found
-[in github](https://github.com/CrunchyData/postgres-ci-cd-demo/tree/main/Crunchy-Postgres-Self-Test).
+I have created a self test container for Crunchy Postgres for Kubernetes. This
+will be deployed as a sidecar in each Postgres pod. It runs read, write and
+delete tests in the cluster and confirms that replication is working as expected
+across all Postgres pods. If the tests pass it will synch an ArgoCD application
+resulting in the promotion of the Postgres cluster to another namespace. The
+sidecar uses a configmap to manage self test behavior and ArgoCD application
+sync. More information about the self test container and its configuration can
+be found
+[in github](https://github.com/CrunchyData/postgres-ci-cd-demo/tree/main/Self-Test-Container).
 
 <details><summary>- postgres-self-test-config.yaml</summary>
 
@@ -382,7 +382,7 @@ hippo-pgha1-mrhq-0        5/5     Running     0          2m29s
 hippo-repo-host-0         2/2     Running     0          2m29s
 ```
 
-Take a look at the self test container logs in the primary postgres pod in the
+Take a look at the self test container logs in the primary Postgres pod in the
 postgres-dev namespace to see if our tests passed.
 
 ```bash
@@ -424,7 +424,8 @@ hippo-repo-host-0         2/2     Running     0          81s
 
 Lastly, look at the two ArgoCD applications. They are now both marked as
 Synched.
-![synched-apps](https://github.com/CrunchyData/postgres-ci-cd-demo/blob/main/Part-1-Deployment/images/synched-apps.png)
+
+![synched apps](https://imagedelivery.net/lPM0ntuwQfh8VQgJRu0mFg/a652221f-7594-45f1-9586-c31c10a8ab00/public)
 
 ## Summary
 
