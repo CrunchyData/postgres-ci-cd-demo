@@ -263,7 +263,7 @@ please review your settings and try again.
 
 - Project Name: cicd-project
 - Description: A project used for the CI/CD pipeline.
-- Source Repositories: <the git repository you registered with argocd >
+- Source Repositories: < the git repository you registered with argocd >
 - Destinations:
   - Server: https://kubernetes.default.svc
   - Name: in-cluster
