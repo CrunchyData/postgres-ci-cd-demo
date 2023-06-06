@@ -210,7 +210,7 @@ pods. If the tests pass it will synch an ArgoCD application resulting in the
 promotion of the Postgres cluster to another namespace. The sidecar uses a
 configmap to manage self test behavior and ArgoCD application sync. More
 information about the self test container and its configuration can be found
-[in github](https://github.com/bobpach/Crunchy-Postgres-Self-Test).
+[in github](https://github.com/CrunchyData/postgres-ci-cd-demo/tree/main/Crunchy-Postgres-Self-Test).
 
 <details><summary>- postgres-self-test-config.yaml</summary>
 
