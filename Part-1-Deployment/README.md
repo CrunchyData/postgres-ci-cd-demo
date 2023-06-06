@@ -398,9 +398,9 @@ kubectl logs $(kubectl get pod -l postgres-operator.crunchydata.com/role=master 
 2023-05-24 14:44:30,418 - self_test -           INFO - *** DBConnectionType.PRIMARY_SERVICE Validation Succeeded! ***
 2023-05-24 14:44:40,458 - self_test -           INFO - Validating DBConnectionType.REPLICA_SERVICE Data: Expecting 1000 Rows
 2023-05-24 14:44:40,460 - self_test -           INFO - *** DBConnectionType.REPLICA_SERVICE Validation Succeeded! ***
-2023-05-24 14:44:40,472 - self_test -           INFO - Validating DBConnectionType.REPLICA_POD Data for podhippo-pgha1-2zjd-0: Expecting 1000 Rows
+2023-05-24 14:44:40,472 - self_test -           INFO - Validating DBConnectionType.REPLICA_POD Data for pod hippo-pgha1-2zjd-0: Expecting 1000 Rows
 2023-05-24 14:44:40,473 - self_test -           INFO - *** DBConnectionType.REPLICA_POD Validation Succeeded for pod hippo-pgha1-2zjd-0! ***
-2023-05-24 14:44:40,481 - self_test -           INFO - Validating DBConnectionType.REPLICA_POD Data for podhippo-pgha1-9kf7-0: Expecting 1000 Rows
+2023-05-24 14:44:40,481 - self_test -           INFO - Validating DBConnectionType.REPLICA_POD Data for pod hippo-pgha1-9kf7-0: Expecting 1000 Rows
 2023-05-24 14:44:40,482 - self_test -           INFO - *** DBConnectionType.REPLICA_POD Validation Succeeded for pod hippo-pgha1-9kf7-0! ***
 2023-05-24 14:44:40,663 - self_test -           INFO - Successfully synched the postgres-qa ArgoCD application.
 2023-05-24 14:44:40,663 - self_test -           INFO - ******* SUCCESS: ALL TESTS PASSED *******
@@ -424,6 +424,7 @@ hippo-repo-host-0         2/2     Running     0          81s
 
 Lastly, look at the two ArgoCD applications. They are now both marked as
 Synched.
+[synched-apps](https://github.com/CrunchyData/postgres-ci-cd-demo/blob/main/Part-1-Deployment/images/synched-apps.png)
 
 ## Summary
 
