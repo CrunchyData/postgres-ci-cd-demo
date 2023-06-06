@@ -15,7 +15,7 @@ Today I have a working sample to walk through for implementing basic CI/CD using
 Crunchy Postgres for Kubernetes, ArgoCD, and the Crunchy Postgres Self Test
 container. In the following steps we will:
 
-- We will deploy a Postgres cluster to a developer namespace
+- Deploy a Postgres cluster to a developer namespace
 - Run a series of tests on the deployed cluster
 - Once the tests pass we will automatically deploy the same postgres cluster to
   a QA namespace.
@@ -263,11 +263,11 @@ please review your settings and try again.
 
 - Project Name: cicd-project
 - Description: A project used for the CI/CD pipeline.
-- Source Repositories: the git repository you registered with argocd >
+- Source Repositories: <the git repository you registered with argocd >
 - Destinations:
   - Server: https://kubernetes.default.svc
   - Name: in-cluster
-  - Namespace:
+  - Namespace: *
 
 </summary>
 
