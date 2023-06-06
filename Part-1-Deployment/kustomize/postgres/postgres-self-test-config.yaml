@@ -1,7 +1,7 @@
 apiVersion: v1
 data:  
   argocd-namespace: argocd
-  argocd-service-address: "127.0.0.1" # The IP address of the ArgoCD service
+  argocd-service-address: "<argocd_service_ip>" # The IP address of the ArgoCD service
   argocd-verify-tls: "false"
   auto-promote: "true"
   auto-promote-argocd-app-name: postgres-qa
