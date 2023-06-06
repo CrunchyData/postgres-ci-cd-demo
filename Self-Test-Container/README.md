@@ -1,4 +1,4 @@
-# Crunchy-Postgres-Self-Test
+# Postgres-Self-Test-Container
 A sidecar container that tests the Crunchy Postgres for Kubernetes deployment for base functionality.
 
 ## Overview
