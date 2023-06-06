@@ -424,7 +424,7 @@ hippo-repo-host-0         2/2     Running     0          81s
 
 Lastly, look at the two ArgoCD applications. They are now both marked as
 Synched.
-[synched-apps](https://github.com/CrunchyData/postgres-ci-cd-demo/blob/main/Part-1-Deployment/images/synched-apps.png)
+![synched-apps](https://github.com/CrunchyData/postgres-ci-cd-demo/blob/main/Part-1-Deployment/images/synched-apps.png)
 
 ## Summary
 
