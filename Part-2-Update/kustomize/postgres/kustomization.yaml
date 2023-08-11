@@ -1,7 +1,7 @@
 configurations:
 - postgres-cluster-image-transformer.yaml
 images:
-- name: bobpachcrunchy/crunchy-postgres
+- name: <your_regsitry>/crunchy-postgres
   newTag: ubi8-15.3-5.3.2-1
 resources:
 - postgres-self-test-config.yaml
