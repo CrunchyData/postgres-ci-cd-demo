@@ -2,6 +2,8 @@
 
 When working with containers you always have to be mindful of the age of the containers. Everyday new CVEs are being discovered and are turning up in image scans.  One benefit of having a CI/CD pipeline is the ability to implement security automation.  Let's assume you release a monthly update of your containers that are built on the latest version of the base image and all of the most recent patches have been applied.  This ensures that each month you can remediate any CVEs that might have popped up in your images since their initial release.  In this blog we show you how to use ARGO CD Image Updater as part of your CI/CD pipeline to automatically deploy, test and promote your updated images.  All by doing nothing more than putting them into your registry.
 
+![workflow](images/argo_image_update_workflow.png)
+
 This is the part 2 of CI/CD with Crunchy Postgres for Kubernetes and Argo series.  We will pickup from where we left off in [part 1](https://www.crunchydata.com/blog/ci-cd-with-crunchy-postgres-for-kubernetes-and-argo). We will use ArgoCD Image Updater to monitor a private Docker registry for changes to the postgres image tag.  The image updater will update the image tag in github and the ArgoCD application will deploy those changes to the postgres-dev namespace.  Once deployed, the [self-test](https://github.com/CrunchyData/postgres-ci-cd-demo/tree/main/Self-Test-Container) will run and the changes will be applied to the postgres-qa namespace if all tests pass.
 
 ## Prerequisites
