@@ -4,19 +4,19 @@ When working with containers you always have to be mindful of the age of the con
 
 ![workflow](images/argo_image_update_workflow.png)
 
-This is the part 2 of CI/CD with Crunchy Postgres for Kubernetes and Argo series.  We will pickup from where we left off in [part 1](https://www.crunchydata.com/blog/ci-cd-with-crunchy-postgres-for-kubernetes-and-argo). We will use ArgoCD Image Updater to monitor a private Docker registry for changes to the postgres image tag.  The image updater will update the image tag in github and the ArgoCD application will deploy those changes to the postgres-dev namespace.  Once deployed, the [self-test](https://github.com/CrunchyData/postgres-ci-cd-demo/tree/main/Self-Test-Container) will run and the changes will be applied to the postgres-qa namespace if all tests pass.
+This is the part 2 of CI/CD with Crunchy Postgres for Kubernetes and Argo series.  We will pickup from where we left off in [part 1](https://www.crunchydata.com/blog/ci-cd-with-crunchy-postgres-for-kubernetes-and-argo). We will use Argo CD Image Updater to monitor a private Docker registry for changes to the postgres image tag.  The image updater will update the image tag in github and the Argo CD application will deploy those changes to the postgres-dev namespace.  Once deployed, the [self-test](https://github.com/bobpach/Crunchy-Postgres-Self-Test) will run and the changes will be applied to the postgres-qa namespace if all tests pass.
 
 ## Prerequisites
 There are a few pre-requisites you will need to handle if you plan on following along with this example :
-- A fully functional ArgoCD deployment and a Crunchy Data Postgres cluster as described in my previous [CI/CD blog](https://www.crunchydata.com/blog/ci-cd-with-crunchy-postgres-for-kubernetes-and-argo).
+- A fully functional Argo CD deployment and a Crunchy Data Postgres cluster as described in my previous [CI/CD blog](https://www.crunchydata.com/blog/ci-cd-with-crunchy-postgres-for-kubernetes-and-argo).
 - A private container registry containing the images you want to deploy. Most
   organizations will pull images, tag them and then upload them into their
   private registries. For this blog I am using a private registry for all images
   except the self test. That image is in a public repo in my docker registry.
-- An [access token](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) for your private registry.
+- An [access token](https://docs.docker.com/docker-hub/access-tokens/) for your private registry.
 - A git repository containing the Crunchy Postgres for Kubernetes manifest to be
   deployed. Here's a sample manifest you can use or you can fork
-  [my git repository](https://github.com/CrunchyData/postgres-ci-cd-demo).
+  [my git repository](https://github.com/bobpach/Postgres-CI-CD).
 - A [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) with write access to your git repo.
 
 ## Secrets
@@ -27,10 +27,14 @@ kubectl apply -n argocd -f secrets/privaterepo.yaml
 kubectl apply -n argocd -f secrets/privatereg.yaml
 ```
 
-You should already have a secret called argocd-token in the postgres-dev and postgres-qa namespaces.  This secret contains the base64 encoded JWT token that was created in the sync role in the cicd project in ArgoCD.  It was created as part of the initial CI/CD blog. 
+You should already have a secret called argocd-token in the postgres-dev and postgres-qa namespaces.  This secret contains the base64 encoded JWT token that was created in the sync role in the cicd project in ArgoCD.  It was created as part of the initial CI/CD blog. If you do not have the secret, you can create it now:
+
+```bash
+kubectl apply -n argocd -f secrets/argocd_token.yaml
+```
 
 ## Argo CD Image Updater
-[Argo CD Image Updater](https://argocd-image-updater.readthedocs.io/en/stable/) is a tool to automatically update the container images of Kubernetes workloads that are managed by Argo CD.  We will use it to monitor postgres container images in our private docker registry.
+[Argo CD Image Updater](https://argocd-image-updater.readthedocs.io/en/stable/) is a tool to automatically update the container images of Kubernetes workloads that are managed by Argo CD.  We will use it to monitor postgres container images in our private docker registry and update our image tag in our git repo.
 
 ### Installation
 We will install Argo CD Image Updater into the argocd namespace in our kubernetes cluster.  We already have Argo CD installed there from the previous blog.
@@ -99,8 +103,10 @@ In the ARGO CD UI click on applications in the left pane.  Click on the postgres
 
 Click Save.
 
+Note: In this demo we are only monitoring one image.  You can monitor multiple images by adding them to the image-list annotation.  See [Argo CD Image Updater doc](https://argocd-image-updater.readthedocs.io/en/stable/configuration/images/) for more information.
+
 ## Kustomize
-In order for ArgoCD Image Updater to update our images in git we need to change how we reference our image tags.  In the previous CI/CD blog we referenced them in in the PostgresCluster custom resource itself.  Now we will move the postgres image tag into the kustomization.yaml file.  We will add a transformer and remove the tag from the custom resource.
+In order for Argo CD Image Updater to update our images in git we need to change how we reference our image tags.  In the previous CI/CD blog we referenced them in in the PostgresCluster custom resource itself.  Now we will move the postgres image tag into the kustomization.yaml file.  We will add a transformer and remove the tag from the custom resource.
 ### Transformer
 postgres-cluster-image-transformer.yaml
 ```yaml
@@ -142,7 +148,7 @@ spec:
 Check these changes into your git repo.  They will be required before updating the postgres image in the registry.
 
 ## Deploy the clusters
-If you don't already have your postgres clusters up and running, synch the postgres-dev ArgoCD application.  This will deploy the postgres cluster to the postgres-dev namespace and will run the self test which will synch the postgres cluster to the postgres-qa namespace.  
+If you don't already have your postgres clusters up and running, synch the postgres-dev Argo CD application.  This will deploy the postgres cluster to the postgres-dev namespace and will run the self test which will synch the postgres cluster to the postgres-qa namespace.  
 
 Verify both clusters deployed.
 ```bash
@@ -162,26 +168,26 @@ hippo-pgha1-4cmv-0        5/5     Running     0          3m54s
 hippo-pgha1-mzfm-0        5/5     Running     0          3m54s
 hippo-repo-host-0         2/2     Running     0          3m54s
 ```
-Both postgres clusters are up and running.  Lets take a look at the postgres image version we deployed for each cluster.  We will describe the stateful sets for each namespace.  
+Both postgres clusters are up and running.  Lets take a look at the postgres image version we deployed for each cluster.  We will describe the stateful sets for each namespace. Notice the crunchy-postgres image tag is currently ubi8-5.3.0-1.  This is our starting image. 
 
 Note: Results shown below have been truncated for readability.
 
 ```bash
 kubectl get -n postgres-dev sts -o wide | grep crunchy-postgres
-hippo-pgha1-7lng   1/1     7m2s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
-hippo-pgha1-g8xx   1/1     7m3s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
-hippo-pgha1-nnrm   1/1     7m3s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
+hippo-pgha1-7lng   1/1     7m2s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
+hippo-pgha1-g8xx   1/1     7m3s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
+hippo-pgha1-nnrm   1/1     7m3s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
 
 kubectl get -n postgres-qa sts -o wide | grep crunchy-postgres
-hippo-pgha1-4992   1/1     7m1s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
-hippo-pgha1-4cmv   1/1     7m1s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
-hippo-pgha1-mzfm   1/1     7m1s   bobpachcrunchy/crunchy-pgbackrest:ubi8-5.3.0-1
+hippo-pgha1-4992   1/1     7m1s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
+hippo-pgha1-4cmv   1/1     7m1s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
+hippo-pgha1-mzfm   1/1     7m1s   bobpachcrunchy/crunchy-postgres:ubi8-5.3.0-1
 ```
 
 
 ## Time to Automate Updates
 We have completed all of the prep work.  Now its time to automate updates.  We need to make one more change to the postgres-dev application in Argo CD.  We will edit the application and enable auto-sync.
-- Click on applications in the left panel.
+- Click on applications in the left panel of the Argo CD UI.
 - Click on the postgres-dev application
 - Click the App Details button in the top panel.
 - Click the Enable Auto-Sync button in the Sync Policy Pane of the panel.
@@ -225,11 +231,11 @@ resources:
 - postgres-self-test-config.yaml
 - postgres.yaml
 ```
-The postgres-dev Argo CD app is set to auto-synch.  By default auto-synch will fire every 3 minutes.  When it does fire, it will see that it is out of sync with the git repo and reapply the manifest.  The postgres pods go into a rolling restart process.  Each replica pod will be taken down one at a time and re-initialized with the new image.  After all replica pods are updated a failover happens to elect an updated replica to the primary pod role.  The former primary is then brought down and re-initialized as a replica with the new image.  At this point, all postgres pods in the postgres cluster are running the new image with the only downtime being the few seconds for failover to happen.
+The postgres-dev Argo CD app is set to auto-synch.  By default auto-synch will fire every 3 minutes.  When it does fire, it will see that it is out of sync with the git repo and re-apply the manifest.  The postgres pods go into a rolling restart process.  Each replica pod will be taken down one at a time and re-initialized with the new image.  After all replica pods are updated a failover happens to elect an updated replica to the primary pod role.  The former primary is then brought down and re-initialized as a replica with the new image.  At this point, all postgres pods in the postgres cluster are running the new image with the only downtime being the few seconds for failover to happen.
 
 The self-test container ran after the replica was promoted to primary.  It then calls the synch command on the postgres-qa Argo CD app and that postgres cluster also gets its images updated in the same manner.
 
-Both postgres clusters have now been updated.  Lets take a look at the postgres image version we updated for each cluster.  We will describe the stateful sets for each namespace.  
+Both postgres clusters have now been updated.  Lets take a look at the postgres image version we updated for each cluster.  We will describe the stateful sets for each namespace. Notice the crunchy-postgres image tag is now ubi8-15.3-5.3.2-1.  This is our updated image.  
 
 Note: Results shown below have been truncated for readability.
 
