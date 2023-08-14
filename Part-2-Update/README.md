@@ -252,5 +252,8 @@ hippo-pgha1-tf22   1/1     18m   bobpachcrunchy/crunchy-postgres:ubi8-15.3-5.3.2
 ```
 
 ## Summary
-Using Argo CD, Git, Docker Hub and the self-test container we were able to automatically deploy, test and promote a new postgres image to postgres clusters in dev and test namespaces by doing nothing more than pushing an updated image into a docker registry that argocd-image-updater was monitoring.  CI/CD processes like these can rapidly decrease you time to market with new container images without sacrificing quality or reliability.
+Using Argo CD, Git, Docker Hub and the self-test container we were able to automatically deploy, test and promote a new postgres image to postgres clusters in Dev and QA namespaces by doing nothing more than pushing an updated image into a docker registry that argocd-image-updater was monitoring.  Many organizations will use additional gating mechanisms like manual user acceptance testing and management sign-off before allowing promotions to Prod.  The processes outlined in this blog can be modified to align with your specific prod gating requirements.
+
+Test automation is a critical component of any automated CI/CD pipeline.  Today's test harnesses are designed to support concurrency, use case permutations and process iterations.  The more testing you automate the more rapidly you can move packages through you pipeline.  Using CI/CD automation facilitates a decrease in time to market with your new container images without sacrificing quality or reliability.
+
 
